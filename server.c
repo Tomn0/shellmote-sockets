@@ -28,6 +28,14 @@ int main(int argc, char **argv) {
 
     }
 
+    // ser reuseaddr option
+    const int reuseaddr = 1;
+    if( setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (int *) &reuseaddr, sizeof(reuseaddr)) < 0) {
+        fprintf(stderr, "setsockopt:REUSEADDR error: %s\n", strerror(errno));
+        return 1;
+    }
+
+
     bzero(&servaddr, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(13);
@@ -54,6 +62,9 @@ int main(int argc, char **argv) {
         bzero(str, sizeof(str));
 	   	inet_ntop(AF_INET, (struct sockaddr  *) &cliaddr.sin_addr,  str, sizeof(str));
 		printf("Connection from %s\n", str);
+
+
+
 
         close(cli_socket);
     }
