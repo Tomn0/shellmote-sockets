@@ -15,8 +15,13 @@
 #define STDIN 0
 
 
-int handle_client_connection() {
+int handle_client_connection(char * command) {
 
+    // print client command
+    if (fputs(command, stdout) == EOF)
+        perror("fputs error");
+
+    
 
     return 0;
 }
@@ -29,7 +34,7 @@ int main(int argc, char **argv) {
     int addrlen;
     struct sockaddr_in	servaddr, cliaddr;
 
-    char buffer[MAXLINE], str[INET_ADDRSTRLEN+1];
+    char recvbuff[MAXLINE], str[INET_ADDRSTRLEN+1];
     // select declarations
     fd_set readfds;
 
@@ -162,7 +167,7 @@ int main(int argc, char **argv) {
             {  
                 //Check if it was for closing , and also read the 
                 //incoming message 
-                if ((valread = read( sd , buffer, 1024)) == 0)  
+                if ((valread = read( sd , recvbuff, 1024)) == 0)  
                 {  
                     //Somebody disconnected , get his details and print 
                     getpeername(sd , (struct sockaddr*)&cliaddr , \
@@ -178,10 +183,14 @@ int main(int argc, char **argv) {
                 // handle the client 
                 else 
                 {  
+                    
                     //set the string terminating NULL byte on the end 
                     //of the data read 
-                    // buffer[valread] = '\0';  
-                    // send(sd , buffer , strlen(buffer) , 0 );  
+                    recvbuff[valread] = '\0'; 
+                    handle_client_connection(recvbuff); 
+                    send(sd , recvbuff , strlen(recvbuff) , 0 );  
+
+
                     
 
                 }  
