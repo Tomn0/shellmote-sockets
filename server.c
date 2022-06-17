@@ -14,6 +14,13 @@
 
 #define STDIN 0
 
+
+int handle_client_connection() {
+
+
+    return 0;
+}
+
 int main(int argc, char **argv) {
     // Main declarations
     int listenfd, cli_socket, client_socket[MAXCLIENTS], max_clients = MAXCLIENTS, sd, max_sd, activity, valread;
@@ -27,7 +34,7 @@ int main(int argc, char **argv) {
     fd_set readfds;
 
     //a message 
-    char *welcome_message = "Remote server v1.0 \r\n";  
+    char *welcome_message = "Remote shell server v1.0 \r\n";  
 
     //initialise all client_socket[] to 0 so not checked 
     for (int i = 0; i < max_clients; i++)  
@@ -79,7 +86,7 @@ int main(int argc, char **argv) {
         FD_SET(listenfd, &readfds);
         //FD_SET(STDIN, &readfds);
         max_sd = listenfd;
-        printf("max_sd: %d\n", max_sd);
+        //printf("max_sd: %d\n", max_sd);
 
         // add child sockets to set
         for (int i = 0; i < max_clients; i++) {
@@ -94,7 +101,7 @@ int main(int argc, char **argv) {
             if(sd > max_sd) {
                 max_sd = sd; 
             }
-            printf("max_sd: %d\n", max_sd);
+            // printf("max_sd: %d\n", max_sd);
 
         }
 
@@ -146,7 +153,7 @@ int main(int argc, char **argv) {
             }  
         }
 
-        // check for IO operation son client sockets
+        // check for IO operation on client sockets
         for (int i = 0; i < max_clients; i++)  
         {  
             sd = client_socket[i];  
@@ -168,13 +175,15 @@ int main(int argc, char **argv) {
                     client_socket[i] = 0;  
                 }  
                      
-                //Echo back the message that came in 
+                // handle the client 
                 else 
                 {  
                     //set the string terminating NULL byte on the end 
                     //of the data read 
-                    buffer[valread] = '\0';  
-                    send(sd , buffer , strlen(buffer) , 0 );  
+                    // buffer[valread] = '\0';  
+                    // send(sd , buffer , strlen(buffer) , 0 );  
+                    
+
                 }  
             }  
         }  
