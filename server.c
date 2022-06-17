@@ -10,10 +10,15 @@
 
 #define MAXLINE 1024
 #define LISTENQ 3
+#define MAXCLIENTS 10
+
+#define STDIN 0
 
 int main(int argc, char **argv) {
     // Main declarations
-    int listenfd, cli_socket, client_socket[10], max_clients = 30, sd, max_sd, activity, valread;
+    int listenfd, cli_socket, client_socket[MAXCLIENTS], max_clients = MAXCLIENTS, sd, max_sd, activity, valread;
+    
+    
     int addrlen;
     struct sockaddr_in	servaddr, cliaddr;
 
@@ -72,7 +77,9 @@ int main(int argc, char **argv) {
 
         // add listenfd to socket set
         FD_SET(listenfd, &readfds);
+        //FD_SET(STDIN, &readfds);
         max_sd = listenfd;
+        printf("max_sd: %d\n", max_sd);
 
         // add child sockets to set
         for (int i = 0; i < max_clients; i++) {
@@ -83,15 +90,17 @@ int main(int argc, char **argv) {
                 FD_SET( sd, &readfds );
             }
 
-            // save the highest sockete number
+            // save the highest socket number
             if(sd > max_sd) {
                 max_sd = sd; 
             }
+            printf("max_sd: %d\n", max_sd);
 
         }
 
         //waiting for socket activity
-        activity = select( max_sd + 1 , &readfds , NULL , NULL , NULL);  
+        // printf("max_sd: %d\n", max_sd);
+        activity = select( max_sd+1 , &readfds , NULL , NULL , NULL);  
        
         if ((activity < 0) && (errno!=EINTR))  
         {  
@@ -120,8 +129,7 @@ int main(int argc, char **argv) {
                 fprintf(stderr, "send error: %s\n", strerror(errno));
             }  
                 
-            printf("Welcome message sent successfully");  
-
+            printf("Welcome message sent successfully\n");  
 
 
             //add new socket to array of sockets 
