@@ -1,0 +1,7 @@
+[ ] service discovery
+[ ] usage of multicast addresing (maybe for service discovery)
+[ ] using of names to address translation
+[ ] server starting as a daemon
+[ ] server logging to syslog
+[ ] data sending in a binary format (eg. TLV - Type - Length - Value)
+
