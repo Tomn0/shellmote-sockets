@@ -117,27 +117,22 @@ ssize_t Readline(int fd, void *ptr, size_t maxlen)
 }
 
 
+void *get_in_addr(struct sockaddr *sa)
+{
+    if (sa->sa_family == AF_INET) {
+        return &(((struct sockaddr_in*)sa)->sin_addr);
+    }
+	else
+		printf("Protocol not supported\n");
+		exit(1);
+}
+
+
 ///////////////////////
 ///       Main      ///
 ///////////////////////
 
 int main(int argc, char *argv[]) {
-
-	// address discovery
-	// int status;
-	// struct addrinfo hints;
-	// struct addrinfo *servinfo;  // will point to the results
-
-	// memset(&hints, 0, sizeof hints); // make sure the struct is empty
-	// hints.ai_family = AF_UNSPEC;     // don't care IPv4 or IPv6
-	// hints.ai_socktype = SOCK_STREAM; // TCP stream sockets
-
-	// // get ready to connect
-	// status = getaddrinfo("remote_shell.com", "3490", &hints, &servinfo);
-
-	// freeaddrinfo(servinfo);
-
-
 	// Main declarations
 	int connfd;
 	struct sockaddr_in  servaddr;
@@ -145,36 +140,58 @@ int main(int argc, char *argv[]) {
 
 	char buffer[MAXLINE];
 
+	// address discovery
+	int status;
+	struct addrinfo hints;
+	struct addrinfo *servinfo, *p;  // will point to the results
+
+	char s[INET_ADDRSTRLEN];
+
 	if (argc < 2)
 	{
-	fprintf(stderr,"usage %s hostname \n", argv[0]);
-	return 1;
-	}
-
-
-	if ((connfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		fprintf(stderr, "socket error: %s\n", strerror(errno));
+		fprintf(stderr,"usage %s hostname \n", argv[0]);
 		return 1;
 	}
 
-	bzero((char *) &servaddr, sizeof(servaddr));
-	servaddr.sin_family = AF_INET;
-	servaddr.sin_port = htons(3490);
+	memset(&hints, 0, sizeof hints); // make sure the struct is empty
+	hints.ai_family = AF_INET;     // don't care IPv4 or IPv6
+	hints.ai_socktype = SOCK_STREAM; // TCP stream sockets
 
-	if ( (err=inet_pton(AF_INET, argv[1], &servaddr.sin_addr)) <= 0){
-	if(err == 0 )
-	fprintf(stderr,"inet_pton error for %s \n", argv[1] );
-	else
-	fprintf(stderr,"inet_pton error for %s : %s \n", argv[1], strerror(errno));
-	return 1;
+
+	// get ready to connect
+	if (status = getaddrinfo(argv[1], "remote_shell", &hints, &servinfo) != 0) {
+		fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
+    	return 1;
 	}
 
-	if (connect(connfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0){
-	fprintf(stderr,"connect error : %s \n", strerror(errno));
-	return 1;
+
+	// loop through all the results and connect to the first we can
+    for(p = servinfo; p != NULL; p = p->ai_next) {
+		if ((connfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) < 0) {
+			fprintf(stderr, "socket error: %s\n", strerror(errno));
+			continue;
+		}
+
+		if (connect(connfd, p->ai_addr, p->ai_addrlen) < 0){
+			close(connfd);
+			fprintf(stderr,"connect error : %s \n", strerror(errno));
+			continue;
+		}
+
+		break;
 	}
 
-	printf("Connected\n");
+	if (p == NULL) {
+        fprintf(stderr, "client: failed to connect\n");
+        return 2;
+    }
+	else {
+		inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr), s, sizeof s);
+    	printf("client: connecting to %s\n", s);
+		printf("Connected\n");
+		freeaddrinfo(servinfo);	// all done with this structure
+	}
+
 
 	int n;
 	int count=0;
@@ -183,8 +200,8 @@ int main(int argc, char *argv[]) {
 	n = recv(connfd, buffer, MAXLINE, 0);
 	buffer[n] = 0;	/* null terminate */
 	if ( fputs(buffer, stdout) == EOF) {
-	fprintf(stderr,"fputs error : %s\n", strerror(errno));
-	return 1;
+		fprintf(stderr,"fputs error : %s\n", strerror(errno));
+		return 1;
 	}
 
 	// sleep(20);

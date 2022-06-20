@@ -17,6 +17,8 @@
 
 #define STDIN 0
 
+#define PORT "3490"
+
 
 int handle_client_connection(char * command, char* return_buffer) {
     char output_buffer[MAXLINE];
@@ -43,22 +45,6 @@ int handle_client_connection(char * command, char* return_buffer) {
 }
 
 int main(int argc, char **argv) {
-    // // set address resolution
-    // int status;
-    // struct addrinfo hints;
-    // struct addrinfo *servinfo;  // willpoint to the result
-
-    // memset(&hints, 0, sizeof(hints));
-    // hints.ai_family = AF_INET;          // use IPv4
-    // hints.ai_socktype = SOCK_STREAM;    // TCP stream sockets
-    // hints.ai_flags = AI_PASSIVE;        // fill in my IP for me
-
-
-    // if ((status = getaddrinfo(NULL, "3490", &hints, &servinfo) != 0)) {
-    //     fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
-    //     return 1;
-    // }
-
     // Main declarations
     int listenfd, cli_socket, client_socket[MAXCLIENTS], max_clients = MAXCLIENTS, sd, max_sd, activity, valread;
     
@@ -73,37 +59,60 @@ int main(int argc, char **argv) {
     //a message 
     char *welcome_message = "Remote shell server v1.0 \r\n";  
 
+
+    // // set address resolution
+	int status;
+	struct addrinfo hints;
+	struct addrinfo *servinfo, *p;  // will point to the results
+
+	memset(&hints, 0, sizeof hints); // make sure the struct is empty
+	hints.ai_family = AF_INET;     // don't care IPv4 or IPv6
+	hints.ai_socktype = SOCK_STREAM; // TCP stream sockets
+    // hints.ai_flags = AI_PASSIVE;     // fill in my IP for me
+    
+	// get ready to connect
+	if (status = getaddrinfo("remote_shell.com", "remote_shell", &hints, &servinfo) != 0) {
+		fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
+    	return 1;
+	}
+
     //initialise all client_socket[] to 0 so not checked 
     for (int i = 0; i < max_clients; i++)  
     {  
         client_socket[i] = 0;  
     }  
 
+    // loop through all the results and bind to the first we can
+    for(p = servinfo; p != NULL; p = p->ai_next) {
 
-    // creation of a TCP socket
+        // creation of a TCP socket
+        if ((listenfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) < 0) {
+            fprintf(stderr, "socket error: %s\n", strerror(errno));
+            continue;
 
-    if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        fprintf(stderr, "socket error: %s\n", strerror(errno));
-        return 1;
+        }
+
+        // set SO_REUSEADDR option
+        const int reuseaddr = 1;
+        if( setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (int *) &reuseaddr, sizeof(reuseaddr)) < 0) {
+            fprintf(stderr, "setsockopt:REUSEADDR error: %s\n", strerror(errno));
+            return 1;
+        }
+
+        if (bind(listenfd, p->ai_addr, p->ai_addrlen) < 0) {
+            close(listenfd);
+            fprintf(stderr, "bind error: %s\n", strerror(errno));
+            continue;
+        }
+        break;
 
     }
-
-    // set SO_REUSEADDR option
-    const int reuseaddr = 1;
-    if( setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (int *) &reuseaddr, sizeof(reuseaddr)) < 0) {
-        fprintf(stderr, "setsockopt:REUSEADDR error: %s\n", strerror(errno));
-        return 1;
-    }
+    freeaddrinfo(servinfo); // all done with this structure
 
 
-    bzero(&servaddr, sizeof(servaddr));
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_port = htons(3490);
-    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-
-    if (bind(listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0) {
-        fprintf(stderr, "bind error: %s\n", strerror(errno));
-        return 1;
+    if (p == NULL)  {
+        fprintf(stderr, "server: failed to bind\n");
+        exit(1);
     }
 
 
