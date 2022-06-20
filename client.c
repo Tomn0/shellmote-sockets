@@ -6,6 +6,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <netdb.h>
 
 #define MAXLINE 1024
 
@@ -14,7 +15,6 @@
 ///////////////////////
 ///      Utils      ///
 ///////////////////////
-
 void Fputs(const char *ptr, FILE *stream)
 {
 	if (fputs(ptr, stream) == EOF)
@@ -30,9 +30,8 @@ char * Fgets(char *ptr, int n, FILE *stream)
 
 	return (rptr);
 }
-
-ssize_t						/* Write "n" bytes to a descriptor. */
-writen(int fd, const void *vptr, size_t n)
+/* Write "n" bytes to a descriptor. */
+ssize_t writen(int fd, const void *vptr, size_t n)
 {
 	size_t		nleft;
 	ssize_t		nwritten;
@@ -55,20 +54,17 @@ writen(int fd, const void *vptr, size_t n)
 }
 /* end writen */
 
-void
-Writen(int fd, void *ptr, size_t nbytes)
+void Writen(int fd, void *ptr, size_t nbytes)
 {
 	if (writen(fd, ptr, nbytes) != nbytes)
 		perror("writen error");
 }
 
-
 static int	read_cnt;
 static char	*read_ptr;
 static char	read_buf[MAXLINE];
 
-static ssize_t
-my_read(int fd, char *ptr)
+static ssize_t my_read(int fd, char *ptr)
 {
 
 	if (read_cnt <= 0) {
@@ -126,61 +122,77 @@ ssize_t Readline(int fd, void *ptr, size_t maxlen)
 ///////////////////////
 
 int main(int argc, char *argv[]) {
-  // Main declarations
-  int connfd;
-  struct sockaddr_in  servaddr;
-  int err;
 
-  char buffer[MAXLINE];
+	// address discovery
+	// int status;
+	// struct addrinfo hints;
+	// struct addrinfo *servinfo;  // will point to the results
 
-  if (argc < 2)
-  {
-    fprintf(stderr,"usage %s hostname \n", argv[0]);
-    return 1;
-  }
+	// memset(&hints, 0, sizeof hints); // make sure the struct is empty
+	// hints.ai_family = AF_UNSPEC;     // don't care IPv4 or IPv6
+	// hints.ai_socktype = SOCK_STREAM; // TCP stream sockets
+
+	// // get ready to connect
+	// status = getaddrinfo("remote_shell.com", "3490", &hints, &servinfo);
+
+	// freeaddrinfo(servinfo);
 
 
-  if ((connfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-      fprintf(stderr, "socket error: %s\n", strerror(errno));
-      return 1;
-  }
+	// Main declarations
+	int connfd;
+	struct sockaddr_in  servaddr;
+	int err;
 
-  bzero((char *) &servaddr, sizeof(servaddr));
-  servaddr.sin_family = AF_INET;
-  servaddr.sin_port = htons(13);
+	char buffer[MAXLINE];
 
-  if ( (err=inet_pton(AF_INET, argv[1], &servaddr.sin_addr)) <= 0){
-  if(err == 0 )
-    fprintf(stderr,"inet_pton error for %s \n", argv[1] );
-  else
-    fprintf(stderr,"inet_pton error for %s : %s \n", argv[1], strerror(errno));
-  return 1;
-  }
+	if (argc < 2)
+	{
+	fprintf(stderr,"usage %s hostname \n", argv[0]);
+	return 1;
+	}
 
-  if (connect(connfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0){
-    fprintf(stderr,"connect error : %s \n", strerror(errno));
-    return 1;
-  }
 
-  printf("Connected\n");
+	if ((connfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		fprintf(stderr, "socket error: %s\n", strerror(errno));
+		return 1;
+	}
 
-  int n;
-  int count=0;
+	bzero((char *) &servaddr, sizeof(servaddr));
+	servaddr.sin_family = AF_INET;
+	servaddr.sin_port = htons(3490);
 
-  // read and print welcome message
-  n = recv(connfd, buffer, MAXLINE, 0);
-  buffer[n] = 0;	/* null terminate */
-  if ( fputs(buffer, stdout) == EOF) {
-    fprintf(stderr,"fputs error : %s\n", strerror(errno));
-    return 1;
-  }
+	if ( (err=inet_pton(AF_INET, argv[1], &servaddr.sin_addr)) <= 0){
+	if(err == 0 )
+	fprintf(stderr,"inet_pton error for %s \n", argv[1] );
+	else
+	fprintf(stderr,"inet_pton error for %s : %s \n", argv[1], strerror(errno));
+	return 1;
+	}
 
-  // sleep(20);
+	if (connect(connfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0){
+	fprintf(stderr,"connect error : %s \n", strerror(errno));
+	return 1;
+	}
 
-  // Sending message to server
+	printf("Connected\n");
 
-  // reading from STDIN 
-  char	sendline[MAXLINE], recvline[MAXLINE];
+	int n;
+	int count=0;
+
+	// read and print welcome message
+	n = recv(connfd, buffer, MAXLINE, 0);
+	buffer[n] = 0;	/* null terminate */
+	if ( fputs(buffer, stdout) == EOF) {
+	fprintf(stderr,"fputs error : %s\n", strerror(errno));
+	return 1;
+	}
+
+	// sleep(20);
+
+	// Sending message to server
+
+	// reading from STDIN 
+	char	sendline[MAXLINE], recvline[MAXLINE];
 
 	while (Fgets(sendline, MAXLINE, stdin) != NULL) {
 
@@ -193,6 +205,6 @@ int main(int argc, char *argv[]) {
 		Fputs(recvline, stdout);
 	}
 
-  close(connfd);
+	close(connfd);
 
 }

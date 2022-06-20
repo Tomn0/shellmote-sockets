@@ -7,6 +7,9 @@
 #include <string.h>
 #include <arpa/inet.h>   
 #include <unistd.h>
+#include <netdb.h>
+
+#include "parserv3.c"
 
 #define MAXLINE 1024
 #define LISTENQ 3
@@ -15,18 +18,47 @@
 #define STDIN 0
 
 
-int handle_client_connection(char * command) {
+int handle_client_connection(char * command, char* return_buffer) {
+    char output_buffer[MAXLINE];
+    int output_size = MAXLINE;
+
+    bzero(&output_buffer, sizeof(output_buffer));
+    bzero(&return_buffer, sizeof(return_buffer));
+
+    printf("Handling client's connection\n");
 
     // print client command
     if (fputs(command, stdout) == EOF)
         perror("fputs error");
 
-    
+    if (execute_command(command, output_buffer, output_size) != 0) {
+        printf("Error in command execution");
+        return -1;
+    }
+    printf("No error\n");
+    printf("Output: %s", output_buffer);
+    return_buffer = output_buffer;
 
     return 0;
 }
 
 int main(int argc, char **argv) {
+    // // set address resolution
+    // int status;
+    // struct addrinfo hints;
+    // struct addrinfo *servinfo;  // willpoint to the result
+
+    // memset(&hints, 0, sizeof(hints));
+    // hints.ai_family = AF_INET;          // use IPv4
+    // hints.ai_socktype = SOCK_STREAM;    // TCP stream sockets
+    // hints.ai_flags = AI_PASSIVE;        // fill in my IP for me
+
+
+    // if ((status = getaddrinfo(NULL, "3490", &hints, &servinfo) != 0)) {
+    //     fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
+    //     return 1;
+    // }
+
     // Main declarations
     int listenfd, cli_socket, client_socket[MAXCLIENTS], max_clients = MAXCLIENTS, sd, max_sd, activity, valread;
     
@@ -34,7 +66,7 @@ int main(int argc, char **argv) {
     int addrlen;
     struct sockaddr_in	servaddr, cliaddr;
 
-    char recvbuff[MAXLINE], str[INET_ADDRSTRLEN+1];
+    char recvbuff[MAXLINE], str[INET_ADDRSTRLEN+1], return_output[MAXLINE];
     // select declarations
     fd_set readfds;
 
@@ -66,7 +98,7 @@ int main(int argc, char **argv) {
 
     bzero(&servaddr, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
-    servaddr.sin_port = htons(13);
+    servaddr.sin_port = htons(3490);
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     if (bind(listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0) {
@@ -113,7 +145,8 @@ int main(int argc, char **argv) {
         //waiting for socket activity
         // printf("max_sd: %d\n", max_sd);
         activity = select( max_sd+1 , &readfds , NULL , NULL , NULL);  
-       
+        printf("activity: %d\n", activity);
+
         if ((activity < 0) && (errno!=EINTR))  
         {  
             fprintf(stderr, "select error: %s\n", strerror(errno));
@@ -187,12 +220,11 @@ int main(int argc, char **argv) {
                     //set the string terminating NULL byte on the end 
                     //of the data read 
                     recvbuff[valread] = '\0'; 
-                    handle_client_connection(recvbuff); 
-                    send(sd , recvbuff , strlen(recvbuff) , 0 );  
+                    handle_client_connection(recvbuff, return_output); 
+                    // TODO: to powinno by robione wewntrz funkcji
+                    return_output[MAXLINE] = '\0'; 
 
-
-                    
-
+                    send(sd , return_output , strlen(return_output) , 0 );  
                 }  
             }  
         }  
