@@ -221,8 +221,7 @@ int main(int argc, char **argv) {
                     //of the data read 
                     recvbuff[valread] = '\0'; 
                     handle_client_connection(recvbuff, return_output); 
-                    // TODO: to powinno by robione wewntrz funkcji
-                    return_output[MAXLINE] = '\0'; 
+
 
                     send(sd , return_output , strlen(return_output) , 0 );  
                 }  
