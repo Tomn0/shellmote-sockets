@@ -27,7 +27,8 @@ int execute_command(char *command, char *buffor, int buff_size)
     }
 
     close(pipefd[1]);
-    read(pipefd[0], buffor, buff_size);
+    read(pipefd[0], buffor, buff_size-1);
+    buffor[buff_size-1] = "\0";
     close(pipefd[0]);
 
     return 0;
