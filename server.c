@@ -231,16 +231,13 @@ int main(int argc, char **argv) {
                     recvbuff[valread] = '\0'; 
                     handle_client_connection(recvbuff, return_output); 
 
-
-                    send(sd , return_output , strlen(return_output) , 0 );  
+                    send(sd , return_output , strlen(return_output) , 0);  
                 }  
             }  
         }  
 
         // close(cli_socket);
     }
-
-
 
     return 0;
 }

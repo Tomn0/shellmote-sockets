@@ -215,10 +215,16 @@ int main(int argc, char *argv[]) {
 
 		Writen(connfd, sendline, strlen(sendline));
 
-		if (Readline(connfd, recvline, MAXLINE) == 0){
+		// if (Readline(connfd, recvline, MAXLINE) == 0){
+		// 	perror("str_cli: server terminated prematurely");
+		// 	exit(0);
+		// }
+		if (read(connfd, recvline, MAXLINE) == 0){
 			perror("str_cli: server terminated prematurely");
 			exit(0);
 		}
+	
+
 		Fputs(recvline, stdout);
 	}
 
