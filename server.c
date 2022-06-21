@@ -20,12 +20,11 @@
 #define PORT "3490"
 
 
-int handle_client_connection(char * command, char* return_buffer) {
+int handle_client_connection(int fd, char * command) {
     char output_buffer[MAXLINE];
     int output_size = MAXLINE;
 
     bzero(&output_buffer, sizeof(output_buffer));
-    bzero(&return_buffer, sizeof(return_buffer));
 
     printf("Handling client's connection\n");
 
@@ -39,7 +38,8 @@ int handle_client_connection(char * command, char* return_buffer) {
     }
     printf("No error\n");
     printf("Output: %s", output_buffer);
-    return_buffer = output_buffer;
+
+    send(fd , output_buffer , output_size , 0);  
 
     return 0;
 }
@@ -229,9 +229,8 @@ int main(int argc, char **argv) {
                     //set the string terminating NULL byte on the end 
                     //of the data read 
                     recvbuff[valread] = '\0'; 
-                    handle_client_connection(recvbuff, return_output); 
+                    handle_client_connection(sd, recvbuff); 
 
-                    send(sd , return_output , strlen(return_output) , 0);  
                 }  
             }  
         }  

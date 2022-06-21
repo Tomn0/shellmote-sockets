@@ -214,11 +214,13 @@ int main(int argc, char *argv[]) {
 	while (Fgets(sendline, MAXLINE, stdin) != NULL) {
 
 		Writen(connfd, sendline, strlen(sendline));
-
+		
 		// if (Readline(connfd, recvline, MAXLINE) == 0){
 		// 	perror("str_cli: server terminated prematurely");
 		// 	exit(0);
 		// }
+		printf("Waiting...\n");
+
 		if (read(connfd, recvline, MAXLINE) == 0){
 			perror("str_cli: server terminated prematurely");
 			exit(0);
@@ -226,6 +228,9 @@ int main(int argc, char *argv[]) {
 	
 
 		Fputs(recvline, stdout);
+
+		bzero(sendline, sizeof(sendline));
+		bzero(recvline, sizeof(recvline));
 	}
 
 	close(connfd);
