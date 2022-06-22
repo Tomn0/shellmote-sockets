@@ -127,19 +127,8 @@ void *get_in_addr(struct sockaddr *sa)
 		exit(1);
 }
 
-
-///////////////////////
-///       Main      ///
-///////////////////////
-
-int main(int argc, char *argv[]) {
-	// Main declarations
+int resolve_address (char* name) {
 	int connfd;
-	struct sockaddr_in  servaddr;
-	int err;
-
-	char buffer[MAXLINE];
-
 	// address discovery
 	int status;
 	struct addrinfo hints;
@@ -147,19 +136,13 @@ int main(int argc, char *argv[]) {
 
 	char s[INET_ADDRSTRLEN];
 
-	if (argc < 2)
-	{
-		fprintf(stderr,"usage %s hostname \n", argv[0]);
-		return 1;
-	}
-
 	memset(&hints, 0, sizeof hints); // make sure the struct is empty
 	hints.ai_family = AF_INET;     // don't care IPv4 or IPv6
 	hints.ai_socktype = SOCK_STREAM; // TCP stream sockets
 
 
 	// get ready to connect
-	if (status = getaddrinfo(argv[1], "remote_shell", &hints, &servinfo) != 0) {
+	if (status = getaddrinfo(name, "remote_shell", &hints, &servinfo) != 0) {
 		fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
     	return 1;
 	}
@@ -191,6 +174,34 @@ int main(int argc, char *argv[]) {
 		printf("Connected\n");
 		freeaddrinfo(servinfo);	// all done with this structure
 	}
+
+
+
+	return connfd;
+}
+
+
+
+
+///////////////////////
+///       Main      ///
+///////////////////////
+
+int main(int argc, char *argv[]) {
+	// Main declarations
+	int connfd;
+	struct sockaddr_in  servaddr;
+	int err;
+
+	char buffer[MAXLINE];
+
+	if (argc < 2)
+	{
+		fprintf(stderr,"usage %s hostname \n", argv[0]);
+		return 1;
+	}
+
+	connfd = resolve_address(argv[1]);
 
 
 	int n;
