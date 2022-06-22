@@ -14,10 +14,52 @@
 #define MAXLINE 1024
 #define LISTENQ 3
 #define MAXCLIENTS 10
-
 #define STDIN 0
-
 #define PORT "3490"
+
+
+int create_send_udp_socket() {
+    int udpsockfd;
+
+
+    if (udpsockfd = socket(AF_INET, SOCK_DGRAM, 0) < 0) {
+        fprintf(stderr, "UDP socket error: %s\n", strerror(errno));
+        exit(1);
+    }
+
+    return udpsockfd;
+}
+
+
+int multicast_service() {
+    int sendfd;
+    int recvfd;
+    const int on = 1;
+
+
+    if (sendfd = socket(AF_INET, SOCK_DGRAM, 0) < 0) {
+        fprintf(stderr, "UDP socket error: %s\n", strerror(errno));
+        exit(1);
+    }
+
+    if (recvfd = socket(AF_INET, SOCK_DGRAM, 0) < 0) {
+        fprintf(stderr, "UDP socket error: %s\n", strerror(errno));
+        exit(1);
+    }
+
+    if (setsockopt(recvfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0){
+		fprintf(stderr,"setsockopt error : %s\n", strerror(errno));
+		return 1;
+	}
+
+
+
+
+
+
+
+
+}
 
 
 int handle_client_connection(int fd, char * command) {
@@ -43,6 +85,7 @@ int handle_client_connection(int fd, char * command) {
 
     return 0;
 }
+
 
 int main(int argc, char **argv) {
     // Main declarations
@@ -122,6 +165,12 @@ int main(int argc, char **argv) {
     }
 
     printf("Waiting for connections...\n");
+
+
+    // MULTICASTING
+    if (fork() == 0) {
+        multicast_service();
+    }
 
     addrlen = sizeof(cliaddr);
     for(;;){
