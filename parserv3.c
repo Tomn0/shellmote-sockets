@@ -3,20 +3,15 @@
 #include <string.h>
 #include <stdlib.h>
 
-int execute_command(char *command, char *buffor, int buff_size)
+int execute_command(char *command, int pipefd[2])
 {
+    int datalen;
     command = strtok(command, "\n");
-
-    int pipefd[2];
-    if (pipe(pipefd) == -1)
-    {
-        perror("Pipe failed");
-        exit(1);
-    }
 
     if (fork() == 0)
     {
         dup2(pipefd[1], 1);
+        dup2(pipefd[1], 2);
         close(pipefd[0]);
         close(pipefd[1]);
 
@@ -26,10 +21,12 @@ int execute_command(char *command, char *buffor, int buff_size)
         exit(1);
     }
 
+    wait(0);
     close(pipefd[1]);
-    read(pipefd[0], buffor, buff_size-1);
-    buffor[buff_size-1] = 0;
-    close(pipefd[0]);
+    if (ioctl(pipefd[0], FIONREAD, &datalen) != 0)
+    {
+        perror("ioctl failed");
+    }
 
-    return 0;
+    return datalen;
 }
