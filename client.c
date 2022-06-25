@@ -7,10 +7,53 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <netdb.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
+
+#include "utils.c"
 
 #define MAXLINE 1024
 
 #define STDIN 0
+#define IF_NAME "enp0s3"
+
+///////////////////////
+///     Argpars     ///
+///////////////////////
+#include <argp.h>
+#include <stdbool.h>
+
+const char *argp_program_version = "programname programversion";
+const char *argp_program_bug_address = "<your@email.address>";
+static char doc[] = "Your program description.";
+static char args_doc[] = "[FILENAME]...";
+static struct argp_option options[] = { 
+    { "line", 'l', 0, 0, "Compare lines instead of characters."},
+    { "word", 'w', 0, 0, "Compare words instead of characters."},
+    { "nocase", 'i', 0, 0, "Compare case insensitive instead of case sensitive."},
+    { 0 } 
+};
+
+struct arguments {
+    enum { CHARACTER_MODE, WORD_MODE, LINE_MODE } mode;
+    bool isCaseInsensitive;
+};
+
+static error_t parse_opt(int key, char *arg, struct argp_state *state) {
+    struct arguments *arguments = state->input;
+    switch (key) {
+    case 'l': arguments->mode = LINE_MODE; break;
+    case 'w': arguments->mode = WORD_MODE; break;
+    case 'i': arguments->isCaseInsensitive = true; break;
+    case ARGP_KEY_ARG: return 0;
+    default: return ARGP_ERR_UNKNOWN;
+    }   
+    return 0;
+}
+
+static struct argp argp = { options, parse_opt, args_doc, doc, 0, 0, 0 };
+
+
 
 ///////////////////////
 ///      Utils      ///
@@ -181,7 +224,162 @@ int resolve_address (char* name) {
 }
 
 
+// unsigned int
+// _if_nametoindex(const char *ifname)
+// {
+// 	int s;
+// 	struct ifreq ifr;
+// 	unsigned int ni;
 
+// 	s = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+// 	if (s != -1) {
+
+// 	memset(&ifr, 0, sizeof(ifr));
+// 	strncpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
+	
+// 	if (ioctl(s, SIOCGIFINDEX, &ifr) != -1) {
+// 			close(s);
+// 			return (ifr.ifr_ifindex);
+// 	}
+// 		close(s);
+// 		return -1;
+// 	}
+// }
+
+
+// int mcast_join(int sockfd, const struct sockaddr *grp, socklen_t grplen,
+// 		   const char *ifname, u_int ifindex)
+// {
+// 	struct group_req req;
+// 	if (ifindex > 0) {
+// 		req.gr_interface = ifindex;
+// 	} else if (ifname != NULL) {
+// 		if ( (req.gr_interface = if_nametoindex(ifname)) == 0) {
+// 			errno = ENXIO;	/* if name not found */
+// 			return(-1);
+// 		}
+// 	} else
+// 		req.gr_interface = 0;
+// 	if (grplen > sizeof(req.gr_group)) {
+// 		errno = EINVAL;
+// 		return -1;
+// 	}
+// 	memcpy(&req.gr_group, grp, grplen);
+// 	return (setsockopt(sockfd, family_to_level(grp->sa_family),
+// 			MCAST_JOIN_GROUP, &req, sizeof(req)));
+// }
+
+
+void recv_all(int recvfd, socklen_t salen)
+{
+	int					n;
+	char				line[MAXLINE+1];
+	socklen_t			len;
+	struct sockaddr		*safrom;
+	char str[128];
+	struct sockaddr_in6*	 cliaddr;
+	struct sockaddr_in*	 cliaddrv4;
+	char			addr_str[INET6_ADDRSTRLEN+1];
+
+	safrom = malloc(salen);
+
+	for ( ; ; ) {
+		len = salen;
+		if( (n = recvfrom(recvfd, line, MAXLINE, 0, safrom, &len)) < 0 )
+		  perror("recvfrom() error");
+
+		line[n] = 0;	/* null terminate */
+		
+		if( safrom->sa_family == AF_INET6 ){
+		      // cliaddr = (struct sockaddr_in6*) safrom;
+		      // inet_ntop(AF_INET6, (struct sockaddr  *) &cliaddr->sin6_addr,  addr_str, sizeof(addr_str));
+			printf("Protocol not supported\n");
+			exit(1);
+		}
+		else{
+		      cliaddrv4 = (struct sockaddr_in*) safrom;
+		      inet_ntop(AF_INET, (struct sockaddr  *) &cliaddrv4->sin_addr,  addr_str, sizeof(addr_str));
+		}
+
+		printf("Datagram from %s : %s (%d bytes)\n", addr_str, line, n);
+		fflush(stdout);
+	}
+}
+
+
+void multicast_discover_service(const char* serv, char* port, char* interface) {
+	int recvfd;
+	struct sockaddr_in *sasend, *sarecv;
+	const int on = 1;
+	socklen_t salen;
+
+	// int sendfd;
+    // int recvfd;
+    // struct sockaddr_in *ipv4addr;
+    struct sockaddr_in *pservaddrv4;
+	int port_val;
+    // convert port to integer
+    port_val = atoi(port);
+
+	printf("Started discovery service\n");
+
+
+	pservaddrv4 = malloc( sizeof(struct sockaddr_in));
+
+	bzero(pservaddrv4, sizeof(struct sockaddr_in));
+	
+	printf("Creating receive socket\n");
+	
+
+    if (inet_pton(AF_INET, serv, &pservaddrv4->sin_addr) != -1){
+	
+		free(sarecv);
+		sarecv = malloc( sizeof(struct sockaddr_in));
+		pservaddrv4 = (struct sockaddr_in*)sarecv;
+		bzero(pservaddrv4, sizeof(struct sockaddr_in));
+
+		if (inet_pton(AF_INET, serv, &pservaddrv4->sin_addr) <= 0){
+			fprintf(stderr,"AF_INET inet_pton error for %s : %s \n", serv, strerror(errno));
+			exit(1);
+		}else{
+			pservaddrv4->sin_family = AF_INET;
+			pservaddrv4->sin_port   = htons(port_val);
+			salen =  sizeof(struct sockaddr_in);
+			if ( (recvfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0){
+				fprintf(stderr,"socket error : %s\n", strerror(errno));
+				exit(1);
+			}
+		}
+    } 
+    else {
+        printf("The protocol is not supported\n");
+        exit(1);
+    }
+
+	if (setsockopt(recvfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0){
+		fprintf(stderr,"setsockopt error : %s\n", strerror(errno));
+		exit(1);
+	}
+
+
+
+	if( bind(recvfd, (struct sockaddr*) sarecv, salen) < 0 ){
+	    fprintf(stderr,"bind error : %s\n", strerror(errno));
+	    exit(1);
+	}
+
+
+	if( mcast_join(recvfd, (struct sockaddr*) sarecv, salen, IF_NAME, 0) < 0 ){
+		fprintf(stderr,"mcast_join() error : %s\n", strerror(errno));
+		exit(1);
+	}
+
+	printf("Joined group\n");
+
+	recv_all(recvfd, salen);
+
+
+}
 
 ///////////////////////
 ///       Main      ///
@@ -200,6 +398,11 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr,"usage %s hostname \n", argv[0]);
 		return 1;
 	}
+
+
+
+	// multicast_discover_service("224.0.0.1",  "55555",  "enp0s3");
+
 
 	connfd = resolve_address(argv[1]);
 

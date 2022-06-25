@@ -19,6 +19,7 @@
 // #include	<sys/utsname.h>
 
 #include "parserv3.c"
+#include "utils.c"
 
 #define MAXLINE 1024
 #define LISTENQ 3
@@ -160,7 +161,7 @@ void send_all(int sendfd, struct sockaddr *sadest, socklen_t salen)
 	}
 }
 
-int multicast_service(const char* serv, char* port, char* interface) {
+void multicast_service(const char* serv, char* port, char* interface) {
     int sendfd;
     int recvfd;
     const int on = 1;
@@ -174,7 +175,7 @@ int multicast_service(const char* serv, char* port, char* interface) {
 
     pservaddrv4 = malloc( sizeof(struct sockaddr_in6));
 	
-	// pservaddrv4 = (struct sockaddr_in4*)sasend;
+	// pservaddrv4 = (struct sockaddr_in*)sasend;
 
 	bzero(pservaddrv4, sizeof(struct sockaddr_in));
 
@@ -202,7 +203,7 @@ int multicast_service(const char* serv, char* port, char* interface) {
     } 
     else {
         printf("The protocol is not supported\n");
-        return -1;
+        exit(1);
     }
 
     // if (sendfd = socket(AF_INET, SOCK_DGRAM, 0) < 0) {
@@ -213,7 +214,7 @@ int multicast_service(const char* serv, char* port, char* interface) {
 
     if (setsockopt(sendfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0){
 		fprintf(stderr,"setsockopt error : %s\n", strerror(errno));
-		return 1;
+		exit(1);
 	}
     printf("passed\n");
 
@@ -226,7 +227,7 @@ int multicast_service(const char* serv, char* port, char* interface) {
     printf("socket: %d\n", recvfd);
     if (setsockopt(recvfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0){
 		fprintf(stderr,"setsockopt error : %s\n", strerror(errno));
-		return 1;
+		exit(1);
 	}
 
     sarecv = malloc(salen);

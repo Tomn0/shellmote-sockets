@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/wait.h>
 
 int execute_command(char *command, int pipefd[2])
 {
