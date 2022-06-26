@@ -170,7 +170,7 @@ void *get_in_addr(struct sockaddr *sa)
 		exit(1);
 }
 
-int resolve_address (char* name) {
+int resolve_address_and_connect (char* name) {
 	int connfd;
 	// address discovery
 	int status;
@@ -219,58 +219,66 @@ int resolve_address (char* name) {
 	}
 
 
+	return connfd;
+}
+
+
+int connect_service (struct sockaddr_in* server_address) {
+	int connfd;
+	// address discovery
+	int status;
+	struct sockaddr_in* addr;
+	struct addrinfo hints;
+	struct addrinfo *servinfo, *p;  // will point to the results
+
+	char s[INET_ADDRSTRLEN];
+
+	memset(&hints, 0, sizeof hints); // make sure the struct is empty
+	hints.ai_family = AF_INET;     // don't care IPv4 or IPv6
+	hints.ai_socktype = SOCK_STREAM; // TCP stream sockets
+	hints.ai_addr = (struct sockaddr *) server_address;
+
+	// get ready to connect
+	if (status = getaddrinfo(NULL, "remote_shell", &hints, &servinfo) != 0) {
+		fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
+    	return 1;
+	}
+
+
+	// loop through all the results and connect to the first we can
+    for(p = servinfo; p != NULL; p = p->ai_next) {
+		if ((connfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) < 0) {
+			fprintf(stderr, "socket error: %s\n", strerror(errno));
+			continue;
+		}
+
+		if (connect(connfd, p->ai_addr, p->ai_addrlen) < 0){
+			close(connfd);
+			fprintf(stderr,"connect error : %s \n", strerror(errno));
+			continue;
+		}
+
+		break;
+	}
+
+	if (p == NULL) {
+        fprintf(stderr, "client: failed to connect\n");
+        return 2;
+    }
+	else {
+		inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr), s, sizeof s);
+    	printf("client: connecting to %s\n", s);
+		printf("Connected\n");
+		freeaddrinfo(servinfo);	// all done with this structure
+	}
+
 
 	return connfd;
 }
 
 
-// unsigned int
-// _if_nametoindex(const char *ifname)
-// {
-// 	int s;
-// 	struct ifreq ifr;
-// 	unsigned int ni;
 
-// 	s = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-// 	if (s != -1) {
-
-// 	memset(&ifr, 0, sizeof(ifr));
-// 	strncpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
-	
-// 	if (ioctl(s, SIOCGIFINDEX, &ifr) != -1) {
-// 			close(s);
-// 			return (ifr.ifr_ifindex);
-// 	}
-// 		close(s);
-// 		return -1;
-// 	}
-// }
-
-
-// int mcast_join(int sockfd, const struct sockaddr *grp, socklen_t grplen,
-// 		   const char *ifname, u_int ifindex)
-// {
-// 	struct group_req req;
-// 	if (ifindex > 0) {
-// 		req.gr_interface = ifindex;
-// 	} else if (ifname != NULL) {
-// 		if ( (req.gr_interface = if_nametoindex(ifname)) == 0) {
-// 			errno = ENXIO;	/* if name not found */
-// 			return(-1);
-// 		}
-// 	} else
-// 		req.gr_interface = 0;
-// 	if (grplen > sizeof(req.gr_group)) {
-// 		errno = EINVAL;
-// 		return -1;
-// 	}
-// 	memcpy(&req.gr_group, grp, grplen);
-// 	return (setsockopt(sockfd, family_to_level(grp->sa_family),
-// 			MCAST_JOIN_GROUP, &req, sizeof(req)));
-// }
-
-
-void recv_all(int recvfd, socklen_t salen)
+struct sockaddr_in* recv_all(int recvfd, socklen_t salen)
 {
 	int					n;
 	char				line[MAXLINE+1];
@@ -279,7 +287,7 @@ void recv_all(int recvfd, socklen_t salen)
 	char str[128];
 	struct sockaddr_in6*	 cliaddr;
 	struct sockaddr_in*	 cliaddrv4;
-	char			addr_str[INET6_ADDRSTRLEN+1];
+	char addr_str[INET6_ADDRSTRLEN+1];
 
 	safrom = malloc(salen);
 
@@ -303,13 +311,17 @@ void recv_all(int recvfd, socklen_t salen)
 
 		printf("Datagram from %s : %s (%d bytes)\n", addr_str, line, n);
 		fflush(stdout);
+
+		return cliaddrv4;
+		
 	}
 }
 
 
-void multicast_discover_service(const char* serv, char* port, char* interface) {
+struct sockaddr_in* multicast_discover_service(const char* serv, char* port, char* interface) {
 	int recvfd;
-	struct sockaddr_in *sasend, *sarecv;
+	struct sockaddr_in* servaddr;
+	struct sockaddr_in* sarecv;
 	const int on = 1;
 	socklen_t salen;
 
@@ -323,17 +335,16 @@ void multicast_discover_service(const char* serv, char* port, char* interface) {
 
 	printf("Started discovery service\n");
 
-
+	
 	pservaddrv4 = malloc( sizeof(struct sockaddr_in));
 
 	bzero(pservaddrv4, sizeof(struct sockaddr_in));
 	
 	printf("Creating receive socket\n");
 	
-
+	
     if (inet_pton(AF_INET, serv, &pservaddrv4->sin_addr) != -1){
 	
-		free(sarecv);
 		sarecv = malloc( sizeof(struct sockaddr_in));
 		pservaddrv4 = (struct sockaddr_in*)sarecv;
 		bzero(pservaddrv4, sizeof(struct sockaddr_in));
@@ -362,7 +373,7 @@ void multicast_discover_service(const char* serv, char* port, char* interface) {
 	}
 
 
-
+	
 	if( bind(recvfd, (struct sockaddr*) sarecv, salen) < 0 ){
 	    fprintf(stderr,"bind error : %s\n", strerror(errno));
 	    exit(1);
@@ -376,8 +387,8 @@ void multicast_discover_service(const char* serv, char* port, char* interface) {
 
 	printf("Joined group\n");
 
-	recv_all(recvfd, salen);
-
+	servaddr = recv_all(recvfd, salen);
+	return servaddr;
 
 }
 
@@ -388,7 +399,7 @@ void multicast_discover_service(const char* serv, char* port, char* interface) {
 int main(int argc, char *argv[]) {
 	// Main declarations
 	int connfd;
-	struct sockaddr_in  servaddr;
+	struct sockaddr_in  *servaddr;
 	int err;
 
 	char buffer[MAXLINE];
@@ -400,13 +411,20 @@ int main(int argc, char *argv[]) {
 	}
 
 
+	char addr_str[INET6_ADDRSTRLEN+1];
+	servaddr = multicast_discover_service("224.0.0.1",  "55555",  "enp0s3");
+	inet_ntop(AF_INET, (struct sockaddr  *) &servaddr->sin_addr,  addr_str, sizeof(addr_str));
 
-	// multicast_discover_service("224.0.0.1",  "55555",  "enp0s3");
+	printf("Discovered server address: %s:%d\n", addr_str, servaddr->sin_port);
+	fflush(stdout);
 
+	// using multicast service discovery
+	connfd = connect_service(servaddr);
 
-	connfd = resolve_address(argv[1]);
+	// using addres resolution
+	// connfd = resolve_address_and_connect(argv[1]);
 
-
+	printf("Created new socket: %d\n", connfd);
 	int n;
 	int count=0;
 

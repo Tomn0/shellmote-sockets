@@ -31,42 +31,6 @@
 // #define SA struct sockaddr
 
 
-int family_to_level(int family)
-{
-	switch (family) {
-        case AF_INET:
-            return IPPROTO_IP;
-        #ifdef	IPV6
-            case AF_INET6:
-                return IPPROTO_IPV6;
-        #endif
-        default:
-            return -1;
-        }
-}
-
-unsigned int
-_if_nametoindex(const char *ifname)
-{
-	int s;
-	struct ifreq ifr;
-	unsigned int ni;
-
-	s = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-	if (s != -1) {
-
-	memset(&ifr, 0, sizeof(ifr));
-	strncpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
-	
-	if (ioctl(s, SIOCGIFINDEX, &ifr) != -1) {
-			close(s);
-			return (ifr.ifr_ifindex);
-	}
-		close(s);
-		return -1;
-	}
-}
-
 int create_send_udp_socket()
 {
     int udpsockfd;
@@ -78,66 +42,6 @@ int create_send_udp_socket()
     }
 
     return udpsockfd;
-}
-
-int mcast_join(int sockfd, const struct sockaddr *grp, socklen_t grplen,
-		   const char *ifname, u_int ifindex)
-{
-	struct group_req req;
-	if (ifindex > 0) {
-		req.gr_interface = ifindex;
-	} else if (ifname != NULL) {
-		if ( (req.gr_interface = if_nametoindex(ifname)) == 0) {
-			errno = ENXIO;	/* if name not found */
-			return(-1);
-		}
-	} else
-		req.gr_interface = 0;
-	if (grplen > sizeof(req.gr_group)) {
-		errno = EINVAL;
-		return -1;
-	}
-	memcpy(&req.gr_group, grp, grplen);
-	return (setsockopt(sockfd, family_to_level(grp->sa_family),
-			MCAST_JOIN_GROUP, &req, sizeof(req)));
-}
-
-int sockfd_to_family(int sockfd)
-{
-	struct sockaddr_storage ss;
-	socklen_t	len;
-
-	len = sizeof(ss);
-	if (getsockname(sockfd, (struct sockaddr *) &ss, &len) < 0)
-		return(-1);
-	return(ss.ss_family);
-}
-
-int mcast_set_loop(int sockfd, int onoff)
-{
-	switch (sockfd_to_family(sockfd)) {
-	case AF_INET: {
-		u_char		flag;
-
-		flag = onoff;
-		return(setsockopt(sockfd, IPPROTO_IP, IP_MULTICAST_LOOP,
-						  &flag, sizeof(flag)));
-	}
-
-#ifdef	IPV6
-	case AF_INET6: {
-		u_int		flag;
-
-		flag = onoff;
-		return(setsockopt(sockfd, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,
-						  &flag, sizeof(flag)));
-	}
-#endif
-
-	default:
-		errno = EAFNOSUPPORT;
-		return(-1);
-	}
 }
 
 
@@ -190,7 +94,7 @@ void multicast_service(const char* serv, char* port, char* interface) {
 
 		if (inet_pton(AF_INET, serv, &pservaddrv4->sin_addr) <= 0){
 			fprintf(stderr,"AF_INET inet_pton error for %s : %s \n", serv, strerror(errno));
-			return -1;
+			exit(1);
 		}else{
 			pservaddrv4->sin_family = AF_INET;
 			pservaddrv4->sin_port   = htons(port_val);
@@ -251,17 +155,17 @@ void multicast_service(const char* serv, char* port, char* interface) {
 	}
     else {
         printf("The protocol is not supported\n");
-        return -1;
+        exit(1);
     }
 
     if( bind(recvfd, sarecv, salen) < 0 ){
 	    fprintf(stderr,"bind error : %s\n", strerror(errno));
-	    return 1;
+	    exit(1);
 	}
 	
 	if( mcast_join(recvfd, sasend, salen, IF_NAME, 0) < 0 ){
 		fprintf(stderr,"mcast_join() error : %s\n", strerror(errno));
-		return 1;
+		exit(1);
 	}
 	  
 	mcast_set_loop(sendfd, 1);
@@ -343,7 +247,7 @@ int main(int argc, char **argv)
                                      // hints.ai_flags = AI_PASSIVE;     // fill in my IP for me
 
     // get ready to connect
-    if (status = getaddrinfo("remote_shell.com", "remote_shell", &hints, &servinfo) != 0)
+    if (status = getaddrinfo(NULL, "remote_shell", &hints, &servinfo) != 0)
     {
         fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
         return 1;
