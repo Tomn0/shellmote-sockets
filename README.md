@@ -8,3 +8,11 @@ For testing of address resolution functionality add lines to following files:
 
 /etc/services  
 ```remote_shell	3490/tcp # remote shell - network programming project```  
+
+
+## Running the program
+Server  
+```./srv.out <IP-multicast-address> <port> <if name>```  
+
+Client  
+```./cli.out remote_shell.com```  
