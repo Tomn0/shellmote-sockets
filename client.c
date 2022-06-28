@@ -461,7 +461,7 @@ int main(int argc, char *argv[]) {
 
 		for(int n=0; n < packets; n++)
 		{
-			if (read(connfd, packets, sizeof(int)) == 0)
+			if (read(connfd, recvline, MAXLINE) == 0)
 			{
 				perror("str_cli: server terminated prematurely");
 				exit(0);
