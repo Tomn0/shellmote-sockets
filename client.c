@@ -446,6 +446,7 @@ int main(int argc, char *argv[]) {
 
 	// reading from STDIN 
 	char	sendline[MAXLINE], recvline[MAXLINE];
+	int packets = 0;
 
 	while (Fgets(sendline, MAXLINE, stdin) != NULL) {
 
@@ -457,16 +458,23 @@ int main(int argc, char *argv[]) {
 		// }
 		printf("Waiting...\n");
 
-		if (read(connfd, recvline, MAXLINE) == 0){
+		if (read(connfd, packets, sizeof(int)) == 0){
 			perror("str_cli: server terminated prematurely");
 			exit(0);
 		}
-	
 
-		Fputs(recvline, stdout);
+		for(int n=0; n < packets; n++)
+		{
+			if (read(connfd, recvline, MAXLINE) == 0)
+			{
+				perror("str_cli: server terminated prematurely");
+				exit(0);
+			}
+			Fputs(recvline, stdout);
 
-		bzero(sendline, sizeof(sendline));
-		bzero(recvline, sizeof(recvline));
+			bzero(sendline, sizeof(sendline));
+			bzero(recvline, sizeof(recvline));
+		}
 	}
 
 	close(connfd);

@@ -8,13 +8,14 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <netdb.h>
+#include <math.h>
 
 // #include    <signal.h>
-#include 	<sys/ioctl.h>
+#include <sys/ioctl.h>
 // #include 	<unistd.h>
-#include 	<net/if.h>
+#include <net/if.h>
 // #include	<netdb.h>
-#include	<sys/utsname.h>     // struct utsname used for the uname call
+#include <sys/utsname.h> // struct utsname used for the uname call
 // #include	<linux/un.h>
 // #include	<sys/utsname.h>
 
@@ -30,7 +31,6 @@
 #define IF_NAME "enp0s3"
 // #define SA struct sockaddr
 
-
 int create_send_udp_socket()
 {
     int udpsockfd;
@@ -44,28 +44,29 @@ int create_send_udp_socket()
     return udpsockfd;
 }
 
+void send_all(int, struct sockaddr *, socklen_t);
 
-void	send_all(int, struct sockaddr *, socklen_t);
-
-#define	SENDRATE	5		/* send one datagram every five seconds */
+#define SENDRATE 5 /* send one datagram every five seconds */
 
 void send_all(int sendfd, struct sockaddr *sadest, socklen_t salen)
 {
-	char		line[MAXLINE];		/* hostname and process ID */
-	struct utsname	myname;
+    char line[MAXLINE]; /* hostname and process ID */
+    struct utsname myname;
 
-	if (uname(&myname) < 0)
-		perror("uname error");
-	snprintf(line, sizeof(line), "%s, PID=%d", myname.nodename, getpid());
+    if (uname(&myname) < 0)
+        perror("uname error");
+    snprintf(line, sizeof(line), "%s, PID=%d", myname.nodename, getpid());
 
-	for ( ; ; ) {
-		if(sendto(sendfd, line, strlen(line), 0, sadest, salen) < 0 )
-		  fprintf(stderr,"sendto() error : %s\n", strerror(errno));
-		sleep(SENDRATE);
-	}
+    for (;;)
+    {
+        if (sendto(sendfd, line, strlen(line), 0, sadest, salen) < 0)
+            fprintf(stderr, "sendto() error : %s\n", strerror(errno));
+        sleep(SENDRATE);
+    }
 }
 
-void multicast_service(const char* serv, char* port, char* interface) {
+void multicast_service(const char *serv, char *port, char *interface)
+{
     int sendfd;
     int recvfd;
     const int on = 1;
@@ -77,96 +78,113 @@ void multicast_service(const char* serv, char* port, char* interface) {
     // convert port to integer
     port_val = atoi(port);
 
-    pservaddrv4 = malloc( sizeof(struct sockaddr_in6));
-	
-	// pservaddrv4 = (struct sockaddr_in*)sasend;
+    pservaddrv4 = malloc(sizeof(struct sockaddr_in6));
 
-	bzero(pservaddrv4, sizeof(struct sockaddr_in));
+    // pservaddrv4 = (struct sockaddr_in*)sasend;
+
+    bzero(pservaddrv4, sizeof(struct sockaddr_in));
 
     // create send socket
 
-    if (inet_pton(AF_INET, serv, &pservaddrv4->sin_addr) != -1){
-	
-		free(sasend);
-		sasend = malloc( sizeof(struct sockaddr_in));
-		pservaddrv4 = (struct sockaddr_in*)sasend;
-		bzero(pservaddrv4, sizeof(struct sockaddr_in));
+    if (inet_pton(AF_INET, serv, &pservaddrv4->sin_addr) != -1)
+    {
 
-		if (inet_pton(AF_INET, serv, &pservaddrv4->sin_addr) <= 0){
-			fprintf(stderr,"AF_INET inet_pton error for %s : %s \n", serv, strerror(errno));
-			exit(1);
-		}else{
-			pservaddrv4->sin_family = AF_INET;
-			pservaddrv4->sin_port   = htons(port_val);
-			salen =  sizeof(struct sockaddr_in);
-            if ((sendfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        free(sasend);
+        sasend = malloc(sizeof(struct sockaddr_in));
+        pservaddrv4 = (struct sockaddr_in *)sasend;
+        bzero(pservaddrv4, sizeof(struct sockaddr_in));
+
+        if (inet_pton(AF_INET, serv, &pservaddrv4->sin_addr) <= 0)
+        {
+            fprintf(stderr, "AF_INET inet_pton error for %s : %s \n", serv, strerror(errno));
+            exit(1);
+        }
+        else
+        {
+            pservaddrv4->sin_family = AF_INET;
+            pservaddrv4->sin_port = htons(port_val);
+            salen = sizeof(struct sockaddr_in);
+            if ((sendfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+            {
                 fprintf(stderr, "UDP socket error: %s\n", strerror(errno));
                 exit(1);
             }
-		}
-    } 
-    else {
+        }
+    }
+    else
+    {
         printf("The protocol is not supported\n");
         exit(1);
     }
 
+    // if (sendfd = socket(AF_INET, SOCK_DGRAM, 0) < 0) {
+    //     fprintf(stderr, "UDP socket error: %s\n", strerror(errno));
+    //     exit(1);
+    // }
 
-    if (setsockopt(sendfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0){
-		fprintf(stderr,"setsockopt error : %s\n", strerror(errno));
-		exit(1);
-	}
+    if (setsockopt(sendfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0)
+    {
+        fprintf(stderr, "setsockopt error : %s\n", strerror(errno));
+        exit(1);
+    }
     printf("passed\n");
 
     // create receive socket
 
-    if ((recvfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+    if ((recvfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+    {
         fprintf(stderr, "UDP socket error: %s\n", strerror(errno));
         exit(1);
     }
     printf("socket: %d\n", recvfd);
-    if (setsockopt(recvfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0){
-		fprintf(stderr,"setsockopt error : %s\n", strerror(errno));
-		exit(1);
-	}
+    if (setsockopt(recvfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0)
+    {
+        fprintf(stderr, "setsockopt error : %s\n", strerror(errno));
+        exit(1);
+    }
 
     sarecv = malloc(salen);
-	memcpy(sarecv, sasend, salen);
+    memcpy(sarecv, sasend, salen);
 
     // pass interface as the third argument???
-	setsockopt(sendfd, SOL_SOCKET, SO_BINDTODEVICE, interface, strlen(interface));
+    setsockopt(sendfd, SOL_SOCKET, SO_BINDTODEVICE, interface, strlen(interface));
 
-    if(sarecv->sa_family == AF_INET){
-        ipv4addr = (struct sockaddr_in *) sarecv;
-        ipv4addr->sin_addr.s_addr =  htonl(INADDR_ANY);
+    if (sarecv->sa_family == AF_INET)
+    {
+        ipv4addr = (struct sockaddr_in *)sarecv;
+        ipv4addr->sin_addr.s_addr = htonl(INADDR_ANY);
 
-        struct in_addr        localInterface;
+        struct in_addr localInterface;
         localInterface.s_addr = inet_addr(IPADDRESS);
         if (setsockopt(sendfd, IPPROTO_IP, IP_MULTICAST_IF,
-                        (char *)&localInterface,
-                        sizeof(localInterface)) < 0) {
+                       (char *)&localInterface,
+                       sizeof(localInterface)) < 0)
+        {
             perror("setting local interface");
             exit(1);
+        }
     }
-	}
-    else {
+    else
+    {
         printf("The protocol is not supported\n");
         exit(1);
     }
 
-    if( bind(recvfd, sarecv, salen) < 0 ){
-	    fprintf(stderr,"bind error : %s\n", strerror(errno));
-	    exit(1);
-	}
-	
-	if( mcast_join(recvfd, sasend, salen, IF_NAME, 0) < 0 ){
-		fprintf(stderr,"mcast_join() error : %s\n", strerror(errno));
-		exit(1);
-	}
-	  
-	mcast_set_loop(sendfd, 1);
+    if (bind(recvfd, sarecv, salen) < 0)
+    {
+        fprintf(stderr, "bind error : %s\n", strerror(errno));
+        exit(1);
+    }
 
-	send_all(sendfd, sasend, salen);	/* parent -> sends */
+    if (mcast_join(recvfd, sasend, salen, IF_NAME, 0) < 0)
+    {
+        fprintf(stderr, "mcast_join() error : %s\n", strerror(errno));
+        exit(1);
+    }
 
+    mcast_set_loop(sendfd, 1);
+
+    send_all(sendfd, sasend, salen); /* parent -> sends */
 }
 
 int handle_client_connection(int fd, char *command)
@@ -174,6 +192,7 @@ int handle_client_connection(int fd, char *command)
     char output_buffer[MAXLINE];
     int output_size = MAXLINE;
     int pipelen;
+    double packets;
 
     int pipefd[2];
     if (pipe(pipefd) == -1)
@@ -198,6 +217,12 @@ int handle_client_connection(int fd, char *command)
     close(pipefd[1]);
     printf("No error\n");
 
+    // datatype mess calculating and sendint the info about amount of packets to send
+    packets = (double)pipelen / output_size;
+    pipelen = ceil(packets);
+    send(fd, pipelen, sizeof(int));
+
+    // send the command output
     while (read(pipefd[0], output_buffer, output_size) != 0)
     {
         printf("%s", output_buffer);
@@ -225,11 +250,10 @@ int main(int argc, char **argv)
     char *welcome_message = "Remote shell server v1.0 \r\n";
 
     if (argc < 4)
-	{
-		fprintf(stderr,"usage: %s <IP-multicast-address> <port> <if name>\n", argv[0]);
-		return 1;
-	}
-
+    {
+        fprintf(stderr, "usage: %s <IP-multicast-address> <port> <if name>\n", argv[0]);
+        return 1;
+    }
 
     // // set address resolution
     int status;
@@ -297,13 +321,13 @@ int main(int argc, char **argv)
 
     printf("Waiting for connections...\n");
 
-
     // declarations for multicasting - unused??
     socklen_t salen;
-	struct sockaddr	*sasend;
+    struct sockaddr *sasend;
 
     // MULTICASTING - fork here is not a good idea
-    if (fork() == 0) {
+    if (fork() == 0)
+    {
         multicast_service(argv[1], argv[2], argv[3]);
     }
 
