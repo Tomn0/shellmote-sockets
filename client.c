@@ -17,6 +17,10 @@
 #define STDIN 0
 #define IF_NAME "enp0s3"
 
+#define MULT_GROUP "224.0.0.1"
+#define MULT_PORT "55555"
+
+
 ///////////////////////
 ///     Argpars     ///
 ///////////////////////
@@ -380,7 +384,7 @@ struct sockaddr_in* multicast_discover_service(const char* serv, char* port, cha
 	}
 
 
-	if( mcast_join(recvfd, (struct sockaddr*) sarecv, salen, IF_NAME, 0) < 0 ){
+	if( mcast_join(recvfd, (struct sockaddr*) sarecv, salen, interface, 0) < 0 ){
 		fprintf(stderr,"mcast_join() error : %s\n", strerror(errno));
 		exit(1);
 	}
@@ -412,7 +416,7 @@ int main(int argc, char *argv[]) {
 
 
 	char addr_str[INET6_ADDRSTRLEN+1];
-	servaddr = multicast_discover_service("224.0.0.1",  "55555",  "enp0s3");
+	servaddr = multicast_discover_service(MULT_GROUP,  MULT_PORT,  IF_NAME);
 	inet_ntop(AF_INET, (struct sockaddr  *) &servaddr->sin_addr,  addr_str, sizeof(addr_str));
 
 	printf("Discovered server address: %s:%d\n", addr_str, servaddr->sin_port);

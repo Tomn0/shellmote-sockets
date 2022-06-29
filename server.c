@@ -110,11 +110,6 @@ void multicast_service(const char* serv, char* port, char* interface) {
         exit(1);
     }
 
-    // if (sendfd = socket(AF_INET, SOCK_DGRAM, 0) < 0) {
-    //     fprintf(stderr, "UDP socket error: %s\n", strerror(errno));
-    //     exit(1);
-    // }
-
 
     if (setsockopt(sendfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0){
 		fprintf(stderr,"setsockopt error : %s\n", strerror(errno));
