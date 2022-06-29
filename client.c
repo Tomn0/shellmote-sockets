@@ -242,7 +242,7 @@ int connect_service (struct sockaddr_in* server_address) {
 	hints.ai_socktype = SOCK_STREAM; // TCP stream sockets
 	hints.ai_addr = (struct sockaddr *) server_address;
 
-	// get ready to connect
+	// get ready to connect - TODO pass "remote_shell" as program parameter
 	if (status = getaddrinfo(NULL, "remote_shell", &hints, &servinfo) != 0) {
 		fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
     	return 1;

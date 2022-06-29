@@ -18,6 +18,7 @@
 #include <sys/utsname.h> // struct utsname used for the uname call
 // #include	<linux/un.h>
 // #include	<sys/utsname.h>
+#include <syslog.h>
 
 #include "parserv3.c"
 #include "utils.c"
@@ -31,18 +32,18 @@
 #define IF_NAME "enp0s3"
 // #define SA struct sockaddr
 
-int create_send_udp_socket()
-{
-    int udpsockfd;
+// int create_send_udp_socket()
+// {
+//     int udpsockfd;
 
-    if (udpsockfd = socket(AF_INET, SOCK_DGRAM, 0) < 0)
-    {
-        fprintf(stderr, "UDP socket error: %s\n", strerror(errno));
-        exit(1);
-    }
+//     if (udpsockfd = socket(AF_INET, SOCK_DGRAM, 0) < 0)
+//     {
+//         fprintf(stderr, "UDP socket error: %s\n", strerror(errno));
+//         exit(1);
+//     }
 
-    return udpsockfd;
-}
+//     return udpsockfd;
+// }
 
 void send_all(int, struct sockaddr *, socklen_t);
 
@@ -113,7 +114,7 @@ void multicast_service(const char *serv, char *port, char *interface)
     }
     else
     {
-        printf("The protocol is not supported\n");
+        // printf("The protocol is not supported\n");
         exit(1);
     }
 
@@ -127,7 +128,6 @@ void multicast_service(const char *serv, char *port, char *interface)
         fprintf(stderr, "setsockopt error : %s\n", strerror(errno));
         exit(1);
     }
-    printf("passed\n");
 
     // create receive socket
 
@@ -136,7 +136,7 @@ void multicast_service(const char *serv, char *port, char *interface)
         fprintf(stderr, "UDP socket error: %s\n", strerror(errno));
         exit(1);
     }
-    printf("socket: %d\n", recvfd);
+
     if (setsockopt(recvfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0)
     {
         fprintf(stderr, "setsockopt error : %s\n", strerror(errno));
@@ -166,7 +166,7 @@ void multicast_service(const char *serv, char *port, char *interface)
     }
     else
     {
-        printf("The protocol is not supported\n");
+        // printf("The protocol is not supported\n");
         exit(1);
     }
 
@@ -203,7 +203,8 @@ int handle_client_connection(int fd, char *command)
 
     bzero(&output_buffer, sizeof(output_buffer));
 
-    printf("Handling client's connection\n");
+    // printf("Handling client's connection\n");
+    syslog (LOG_NOTICE, "Handling client's connection\n");
 
     // print client command
     if (fputs(command, stdout) == EOF)
@@ -211,11 +212,13 @@ int handle_client_connection(int fd, char *command)
 
     if (pipelen = execute_command(command, pipefd) < 0)
     {
-        printf("Error in command execution");
+        // printf("Error in command execution");
+        syslog (LOG_ERR, "Error in command execution\n");
+        syslog (LOG_NOTICE, "ERRNO = %m");  // FIXME
         return -1;
     }
     close(pipefd[1]);
-    printf("No error\n");
+    // printf("No error\n");
 
     // datatype mess calculating and sendint the info about amount of packets to send
     packets = (double)pipelen / output_size;
@@ -225,10 +228,11 @@ int handle_client_connection(int fd, char *command)
     // send the command output
     while (read(pipefd[0], output_buffer, output_size) != 0)
     {
-        printf("%s", output_buffer);
+        // printf("%s", output_buffer);
+        syslog (LOG_NOTICE, "Sending:\n%s\n", output_buffer);
         send(fd, output_buffer, output_size, 0);
     }
-    printf("\n");
+    // printf("\n");
     close(pipefd[0]);
 
     return 0;
@@ -319,7 +323,8 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    printf("Waiting for connections...\n");
+    //printf("Waiting for connections...\n");
+    syslog (LOG_NOTICE, "Waiting for connections...\n");
 
     // declarations for multicasting - unused??
     socklen_t salen;
@@ -365,7 +370,7 @@ int main(int argc, char **argv)
         // waiting for socket activity
         //  printf("max_sd: %d\n", max_sd);
         activity = select(max_sd + 1, &readfds, NULL, NULL, NULL);
-        printf("activity: %d\n", activity);
+        // printf("activity: %d\n", activity);
 
         if ((activity < 0) && (errno != EINTR))
         {
@@ -384,18 +389,21 @@ int main(int argc, char **argv)
             }
 
             // inform user of socket number - used in send and receive commands
-            printf("New connection , socket fd is %d , ip is : %s , port : %d \n", cli_socket, inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port));
+            // printf("New connection , socket fd is %d , ip is : %s , port : %d \n", cli_socket, inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port));
+            syslog (LOG_NOTICE, "New connection , socket fd is %d , ip is : %s , port : %d \n", cli_socket, inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port));
 
             bzero(str, sizeof(str));
             inet_ntop(AF_INET, (struct sockaddr *)&cliaddr.sin_addr, str, sizeof(str));
-            printf("Connection from %s\n", str);
+            //printf("Connection from %s\n", str);
+	        syslog (LOG_NOTICE, "Connection from %s\n", str);
 
             if (send(cli_socket, welcome_message, strlen(welcome_message), 0) != strlen(welcome_message))
             {
                 fprintf(stderr, "send error: %s\n", strerror(errno));
             }
 
-            printf("Welcome message sent successfully\n");
+            // printf("Welcome message sent successfully\n");
+            syslog (LOG_NOTICE, "Welcome message sent successfully\n");
 
             // add new socket to array of sockets
             for (int i = 0; i < max_clients; i++)
@@ -404,7 +412,7 @@ int main(int argc, char **argv)
                 if (client_socket[i] == 0)
                 {
                     client_socket[i] = cli_socket;
-                    printf("Adding to list of sockets as %d\n", i);
+                    // printf("Adding to list of sockets as %d\n", i);
 
                     break;
                 }
@@ -447,6 +455,6 @@ int main(int argc, char **argv)
 
         // close(cli_socket);
     }
-
+    closelog();
     return 0;
 }
