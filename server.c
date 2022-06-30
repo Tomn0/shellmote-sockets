@@ -222,9 +222,8 @@ int handle_client_connection(int fd, char *command)
     // printf("No error\n");
 
     // datatype mess calculating and sendint the info about amount of packets to send
-    packets = (double)pipelen / output_size;
-    pipelen = ceil(packets);
-    send(fd, &pipelen, sizeof(int), 0);
+    packets = ceil((double)pipelen / output_size);
+    send(fd, &packets, sizeof(int), 0);
 
     syslog (LOG_NOTICE, "executed command: %s\nMAXLEN: %d\ndatalen: %d\npackets expected: %d (%lf)\n",
     command, output_size, pipelen, packets, (double)pipelen/output_size);
