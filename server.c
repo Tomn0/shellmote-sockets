@@ -243,6 +243,13 @@ int handle_client_connection(int fd, char *command)
 
 int main(int argc, char **argv)
 {
+    // Daemon init
+    if(daemon(0,1) != 0)
+    {
+        fprintf(stderr, "Daemon init failed");
+        return 1
+    }
+    
     // Main declarations
     int listenfd, cli_socket, client_socket[MAXCLIENTS], max_clients = MAXCLIENTS, sd, max_sd, activity, valread;
 
