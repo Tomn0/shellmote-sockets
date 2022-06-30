@@ -223,7 +223,7 @@ int handle_client_connection(int fd, char *command)
     // datatype mess calculating and sendint the info about amount of packets to send
     packets = (double)pipelen / output_size;
     pipelen = ceil(packets);
-    send(fd, pipelen, sizeof(int));
+    send(fd, &pipelen, sizeof(int), 0);
 
     // send the command output
     while (read(pipefd[0], output_buffer, output_size) != 0)
@@ -258,6 +258,27 @@ int main(int argc, char **argv)
         fprintf(stderr, "usage: %s <IP-multicast-address> <port> <if name>\n", argv[0]);
         return 1;
     }
+
+
+    // set syslog
+    setlogmask (LOG_UPTO (LOG_NOTICE));
+	openlog ("remote_shell", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL7);
+
+
+    // LOG_CONS
+    // Write messages to the system console if they cannot be sent 
+    // to the logging facility. This option is safe to use in processes 
+    // that have no controlling terminal, since the syslog() function forks 
+    // before opening the console.
+    // LOG_NDELAY
+    // Open the connection to the logging facility immediately. 
+    // Normally the open is delayed until the first message is logged. 
+    // This is useful for programs that need to manage the order in which 
+    // file descriptors are allocated..
+    // LOG_PID
+    // Log the processID with each message. 
+    // This is useful for identifying specific processes. 
+    // In the message header, the processID is surrounded by square brackets. 
 
     // // set address resolution
     int status;
