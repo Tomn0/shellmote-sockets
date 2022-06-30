@@ -458,7 +458,7 @@ int main(int argc, char *argv[]) {
 		// }
 		printf("Waiting...\n");
 
-		if (read(connfd, packets, sizeof(int)) == 0){
+		if (read(connfd, &packets, sizeof(int)) == 0){
 			perror("str_cli: server terminated prematurely");
 			exit(0);
 		}
