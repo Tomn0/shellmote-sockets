@@ -192,7 +192,7 @@ int handle_client_connection(int fd, char *command)
     char output_buffer[MAXLINE];
     int output_size = MAXLINE;
     int pipelen;
-    double packets;
+    int packets;
 
     int pipefd[2];
     if (pipe(pipefd) == -1)
@@ -210,7 +210,8 @@ int handle_client_connection(int fd, char *command)
     if (fputs(command, stdout) == EOF)
         perror("fputs error");
 
-    if (pipelen = execute_command(command, pipefd) < 0)
+    pipelen = execute_command(command, pipefd)
+    if (pipelen < 0)
     {
         // printf("Error in command execution");
         syslog (LOG_ERR, "Error in command execution\n");
@@ -220,10 +221,13 @@ int handle_client_connection(int fd, char *command)
     close(pipefd[1]);
     // printf("No error\n");
 
-    // datatype mess calculating and sendint the info about amount of packets to send
-    packets = (double)pipelen / output_size;
-    pipelen = ceil(packets);
-    send(fd, pipelen, sizeof(int));
+    // datatype mess calculating and sendinh the info about amount of packets to send
+    packets = ceil((double)pipelen / output_size);
+
+    syslog (LOG_NOTICE, "executed command: %s\nMAXLEN: %d\ndatalen: %d\npackets expected: %d (%lf)\n",
+    command, output_size, pipelen, packets, (double)pipelen/output_size);
+
+    send(fd, &pipelen, sizeof(int), 0);
 
     // send the command output
     while (read(pipefd[0], output_buffer, output_size) != 0)
