@@ -90,7 +90,7 @@ void multicast_service(const char *serv, char *port, char *interface)
     if (inet_pton(AF_INET, serv, &pservaddrv4->sin_addr) != -1)
     {
 
-        free(sasend);
+        //free(sasend);
         sasend = malloc(sizeof(struct sockaddr_in));
         pservaddrv4 = (struct sockaddr_in *)sasend;
         bzero(pservaddrv4, sizeof(struct sockaddr_in));
@@ -247,7 +247,7 @@ int main(int argc, char **argv)
     if(daemon(0,1) != 0)
     {
         fprintf(stderr, "Daemon init failed");
-        return 1
+        return 1;
     }
     
     // Main declarations
