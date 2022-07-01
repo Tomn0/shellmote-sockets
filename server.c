@@ -197,7 +197,7 @@ int handle_client_connection(int fd, char *command)
     if (pipelen < 0)
     {
         syslog (LOG_ERR, "Error in command execution\n");
-        syslog (LOG_NOTICE, "ERRNO = %m");  // FIXME
+        syslog (LOG_NOTICE, "ERRNO = %m"); 
         return -1;
     }
     close(pipefd[1]);
@@ -236,11 +236,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    /* redirect stdin, stdout, and stderr to /dev/null */
-	open("/dev/null", O_RDONLY);
-	open("/dev/null", O_RDWR);
-	open("/dev/null", O_RDWR);
-    
+   
     // Main declarations
     int listenfd, cli_socket, client_socket[MAXCLIENTS], max_clients = MAXCLIENTS, sd, max_sd, activity, valread;
 
@@ -253,9 +249,6 @@ int main(int argc, char **argv)
 
     // a message
     char *welcome_message = "Remote shell server v1.0 \r\n";
-
-
-
 
     // set syslog
     setlogmask (LOG_UPTO (LOG_NOTICE));
