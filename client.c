@@ -15,6 +15,7 @@
 #define MAXLINE 1024
 #define STDIN 0
 
+// NOT USED in the current version
 #define IF_NAME "enp0s3"
 #define MULT_GROUP "224.0.0.1"
 #define MULT_PORT "55555"
@@ -253,15 +254,14 @@ int main(int argc, char *argv[]) {
 
 	char buffer[MAXLINE];
 
-	if (argc < 2)
+	if (argc < 5)
 	{
-		fprintf(stderr,"usage %s hostname \n", argv[0]);
+		fprintf(stderr,"usage %s remote_shell <IP-multicast-address> <port> <if-name>\n", argv[0]);
 		return 1;
 	}
 
-
 	char addr_str[INET6_ADDRSTRLEN+1];
-	servaddr = multicast_discover_service(MULT_GROUP,  MULT_PORT,  IF_NAME);
+	servaddr = multicast_discover_service(argv[2],  argv[3],  argv[4]);
 	inet_ntop(AF_INET, (struct sockaddr  *) &servaddr->sin_addr,  addr_str, sizeof(addr_str));
 
 	printf("Discovered server address: %s:%d\n", addr_str, servaddr->sin_port);
@@ -270,7 +270,7 @@ int main(int argc, char *argv[]) {
 	// using multicast service discovery
 	connfd = connect_service(servaddr, argv[1]);
 
-	// using addres resolution
+	// using addres resolution - TODO: using argparse decide whether to use address resolution or multicast service discovery
 	// connfd = resolve_address_and_connect(argv[1]);
 
 	printf("Created new socket: %d\n", connfd);
@@ -285,7 +285,6 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	printf("Enter command: ");
-	// sleep(20);
 
 	// Sending message to server
 
@@ -296,11 +295,6 @@ int main(int argc, char *argv[]) {
 	while (Fgets(sendline, MAXLINE, stdin) != NULL) {
 
 		Writen(connfd, sendline, strlen(sendline));
-		
-		// if (Readline(connfd, recvline, MAXLINE) == 0){
-		// 	perror("str_cli: server terminated prematurely");
-		// 	exit(0);
-		// }
 		printf("Waiting...\n");
 
 		if (read(connfd, &packets, sizeof(int)) == 0){

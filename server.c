@@ -236,7 +236,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-   
+
     // Main declarations
     int listenfd, cli_socket, client_socket[MAXCLIENTS], max_clients = MAXCLIENTS, sd, max_sd, activity, valread;
 
@@ -336,11 +336,7 @@ int main(int argc, char **argv)
 
     syslog (LOG_NOTICE, "Waiting for connections...\n");
 
-    // declarations for multicasting - unused??
-    socklen_t salen;
-    struct sockaddr *sasend;
-
-    // MULTICASTING - fork here is not a good idea
+    // MULTICASTING - fork here
     int pid = fork();
     if (pid == 0)
     {
