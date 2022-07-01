@@ -439,7 +439,7 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr,"fputs error : %s\n", strerror(errno));
 		return 1;
 	}
-
+	printf("Enter command: ");
 	// sleep(20);
 
 	// Sending message to server
@@ -475,6 +475,7 @@ int main(int argc, char *argv[]) {
 			bzero(sendline, sizeof(sendline));
 			bzero(recvline, sizeof(recvline));
 		}
+		printf("\nEnter command: ");
 	}
 
 	close(connfd);
