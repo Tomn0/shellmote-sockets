@@ -11,7 +11,7 @@ For testing of address resolution functionality add lines to following files:
 
 For the multicast service discovery make sure that the interface have active multicast groups.  
 Verify using the command:  
-```ip maddr show dev <if-name>```
+```ip maddr show dev <if-name>```  
 Pass the corresponding multicast address and interface with selected port as program parameters.  
 
 ## Server syslog configuration (Ubuntu)  
@@ -31,4 +31,4 @@ compilation:
 ```./srv.out <IP-multicast-address> <port> <if-name>```  
 
 Client  
-```./cli.out remote_shell```  
+```./cli.out remote_shell <IP-multicast-address> <port> <if-name>```  
