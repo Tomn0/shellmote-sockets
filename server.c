@@ -348,7 +348,8 @@ int main(int argc, char **argv)
     struct sockaddr *sasend;
 
     // MULTICASTING - fork here is not a good idea
-    if (fork() == 0)
+    int pid = fork();
+    if (pid == 0)
     {
         multicast_service(argv[1], argv[2], argv[3]);
     }
@@ -456,6 +457,12 @@ int main(int argc, char **argv)
                     // set the string terminating NULL byte on the end
                     // of the data read
                     recvbuff[valread] = '\0';
+                    if (strncmp(recvbuff, "exit", 4) == 0)
+                    {
+                        syslog (LOG_NOTICE, "Recieved 'exit', terminating\n");
+                        kill(pid, SIGTERM);
+                        return 1;
+                    }
                     handle_client_connection(sd, recvbuff);
                 }
             }
