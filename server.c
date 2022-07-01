@@ -61,7 +61,9 @@ void send_all(int sendfd, struct sockaddr *sadest, socklen_t salen)
     for (;;)
     {
         if (sendto(sendfd, line, strlen(line), 0, sadest, salen) < 0)
-            fprintf(stderr, "sendto() error : %s\n", strerror(errno));
+            // fprintf(stderr, "sendto() error : %s\n", strerror(errno));
+            syslog(LOG_ERR, "sendto() error : %s\n", strerror(errno));
+
         sleep(SENDRATE);
     }
 }
@@ -97,7 +99,7 @@ void multicast_service(const char *serv, char *port, char *interface)
 
         if (inet_pton(AF_INET, serv, &pservaddrv4->sin_addr) <= 0)
         {
-            fprintf(stderr, "AF_INET inet_pton error for %s : %s \n", serv, strerror(errno));
+            syslog(LOG_ERR, "AF_INET inet_pton error for %s : %s \n", serv, strerror(errno));
             exit(1);
         }
         else
@@ -107,7 +109,7 @@ void multicast_service(const char *serv, char *port, char *interface)
             salen = sizeof(struct sockaddr_in);
             if ((sendfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
             {
-                fprintf(stderr, "UDP socket error: %s\n", strerror(errno));
+                syslog(LOG_ERR, "UDP socket error: %s\n", strerror(errno));
                 exit(1);
             }
         }
@@ -125,7 +127,7 @@ void multicast_service(const char *serv, char *port, char *interface)
 
     if (setsockopt(sendfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0)
     {
-        fprintf(stderr, "setsockopt error : %s\n", strerror(errno));
+        syslog(LOG_ERR, "setsockopt error : %s\n", strerror(errno));
         exit(1);
     }
 
@@ -133,13 +135,13 @@ void multicast_service(const char *serv, char *port, char *interface)
 
     if ((recvfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
     {
-        fprintf(stderr, "UDP socket error: %s\n", strerror(errno));
+        syslog(LOG_ERR, "UDP socket error: %s\n", strerror(errno));
         exit(1);
     }
 
     if (setsockopt(recvfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0)
     {
-        fprintf(stderr, "setsockopt error : %s\n", strerror(errno));
+        syslog(LOG_ERR, "setsockopt error : %s\n", strerror(errno));
         exit(1);
     }
 
@@ -172,13 +174,13 @@ void multicast_service(const char *serv, char *port, char *interface)
 
     if (bind(recvfd, sarecv, salen) < 0)
     {
-        fprintf(stderr, "bind error : %s\n", strerror(errno));
+        syslog(LOG_ERR,  "bind error : %s\n", strerror(errno));
         exit(1);
     }
 
     if (mcast_join(recvfd, sasend, salen, IF_NAME, 0) < 0)
     {
-        fprintf(stderr, "mcast_join() error : %s\n", strerror(errno));
+        syslog(LOG_ERR, "mcast_join() error : %s\n", strerror(errno));
         exit(1);
     }
 
@@ -243,6 +245,13 @@ int handle_client_connection(int fd, char *command)
 
 int main(int argc, char **argv)
 {
+
+    if (argc < 4)
+    {
+        fprintf(stderr, "usage: %s <IP-multicast-address> <port> <if name>\n", argv[0]);
+        return 1;
+    }
+
     // Daemon init
     if(daemon(0,1) != 0)
     {
@@ -263,11 +272,7 @@ int main(int argc, char **argv)
     // a message
     char *welcome_message = "Remote shell server v1.0 \r\n";
 
-    if (argc < 4)
-    {
-        fprintf(stderr, "usage: %s <IP-multicast-address> <port> <if name>\n", argv[0]);
-        return 1;
-    }
+
 
 
     // set syslog
@@ -303,7 +308,7 @@ int main(int argc, char **argv)
     // get ready to connect
     if (status = getaddrinfo(NULL, "remote_shell", &hints, &servinfo) != 0)
     {
-        fprintf(stderr, "getaddrinfo error: %s\n", gai_strerror(status));
+        syslog(LOG_ERR, "getaddrinfo error: %s\n", gai_strerror(status));
         return 1;
     }
 
@@ -320,7 +325,7 @@ int main(int argc, char **argv)
         // creation of a TCP socket
         if ((listenfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) < 0)
         {
-            fprintf(stderr, "socket error: %s\n", strerror(errno));
+            syslog(LOG_ERR,  "socket error: %s\n", strerror(errno));
             continue;
         }
 
@@ -328,14 +333,14 @@ int main(int argc, char **argv)
         const int reuseaddr = 1;
         if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (int *)&reuseaddr, sizeof(reuseaddr)) < 0)
         {
-            fprintf(stderr, "setsockopt:REUSEADDR error: %s\n", strerror(errno));
+            syslog(LOG_ERR, "setsockopt:REUSEADDR error: %s\n", strerror(errno));
             return 1;
         }
 
         if (bind(listenfd, p->ai_addr, p->ai_addrlen) < 0)
         {
             close(listenfd);
-            fprintf(stderr, "bind error: %s\n", strerror(errno));
+            syslog(LOG_ERR, "bind error: %s\n", strerror(errno));
             continue;
         }
         break;
@@ -344,13 +349,13 @@ int main(int argc, char **argv)
 
     if (p == NULL)
     {
-        fprintf(stderr, "server: failed to bind\n");
+        syslog(LOG_ERR,  "server: failed to bind\n");
         exit(1);
     }
 
     if (listen(listenfd, LISTENQ) < 0)
     {
-        fprintf(stderr, "listen error: %s\n", strerror(errno));
+        syslog(LOG_ERR, "listen error: %s\n", strerror(errno));
         return 1;
     }
 
@@ -405,7 +410,7 @@ int main(int argc, char **argv)
 
         if ((activity < 0) && (errno != EINTR))
         {
-            fprintf(stderr, "select error: %s\n", strerror(errno));
+            syslog(LOG_ERR, "select error: %s\n", strerror(errno));
             return 1;
         }
 
@@ -415,7 +420,7 @@ int main(int argc, char **argv)
 
             if ((cli_socket = accept(listenfd, (struct sockaddr *)&cliaddr, &addrlen)) < 0)
             {
-                fprintf(stderr, "accept error: %s\n", strerror(errno));
+                syslog(LOG_ERR, "accept error: %s\n", strerror(errno));
                 return 1;
             }
 
@@ -430,7 +435,7 @@ int main(int argc, char **argv)
 
             if (send(cli_socket, welcome_message, strlen(welcome_message), 0) != strlen(welcome_message))
             {
-                fprintf(stderr, "send error: %s\n", strerror(errno));
+                syslog(LOG_ERR, "send error: %s\n", strerror(errno));
             }
 
             // printf("Welcome message sent successfully\n");
@@ -464,7 +469,7 @@ int main(int argc, char **argv)
                     // Somebody disconnected , get his details and print
                     getpeername(sd, (struct sockaddr *)&cliaddr,
                                 (socklen_t *)&addrlen);
-                    printf("Host disconnected , ip %s , port %d \n",
+                    syslog(LOG_NOTICE, "Host disconnected , ip %s , port %d \n",
                            inet_ntoa(cliaddr.sin_addr), ntohs(cliaddr.sin_port));
 
                     // Close the socket and mark as 0 in list for reuse
